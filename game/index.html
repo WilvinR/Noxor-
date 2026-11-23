@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Zona Muerta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Teko:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="hpBox" class="panel">
+    <div class="lbl"><span>VIDA</span><b id="hpTxt">100</b></div>
+    <div id="hpBar"><div id="hpGhost"></div><div id="hpFill"></div></div>
+  </div>
+  <div id="mid">
+    <div id="dist">0<small>m</small></div>
+    <div id="sub">NIVEL <span id="lvl">1</span> · <span id="kills">0</span> BAJAS · <span id="score">0</span> PTS</div>
+    <div id="combo">COMBO x2</div>
+  </div>
+  <div id="wBox" class="panel">
+    <div id="wTop"><canvas id="wIcon" width="192" height="64"></canvas><div id="wName">PISTOLA</div></div>
+    <div id="ammo"><b id="mag">12</b><span id="res"> / ∞</span></div>
+    <div id="rlBar"><i id="rlFill"></i></div>
+    <div id="slots"></div>
+  </div>
+  <button id="pauseBtn" aria-label="Pausa">❚❚</button>
+  <button id="fsBtn" aria-label="Pantalla completa">⛶</button>
+  <div id="bossBar" class="hidden"><div id="bossName">JEFE</div><div class="bb"><div id="bossFill"></div></div></div>
+  <div id="banner"></div>
+  <div id="toast"></div>
+  <div id="hint"></div>
+</div>
+
+<div id="touch" class="hidden">
+  <div id="dpad">
+    <div class="tb" id="tU" data-k="jump"><svg viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg>SALTO</div>
+    <div class="tb" id="tL" data-k="left"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="tb" id="tR" data-k="right"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></div>
+    <div class="tb" id="tD" data-k="slide"><svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7"/></svg>DESLIZ</div>
+  </div>
+  <div class="tb" id="tSwap" data-k="swap"><svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>ARMA</div>
+  <div class="tb" id="tFire" data-k="fire"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>FUEGO</div>
+</div>
+
+<div id="menu" class="screen">
+  <div class="card">
+    <div class="title">ZONA<br><span>MUERTA</span></div>
+    <div class="tag">CORRE · DISPARA · SOBREVIVE</div>
+    <div class="best" id="bestMenu"></div>
+    <button class="btn" id="playBtn">▶ JUGAR</button><br>
+    <button class="btn ghost" id="sndBtn">🔊 SONIDO</button>
+    <button class="btn ghost" id="fsBtn2">⛶ PANTALLA COMPLETA</button>
+    <div class="keys" id="keysInfo">
+      <kbd>A</kbd><kbd>D</kbd> moverse · <kbd>W</kbd>/<kbd>Espacio</kbd> saltar (doble salto) · <kbd>S</kbd> deslizarse<br>
+      <kbd>J</kbd>/clic disparar (mantén) · <kbd>Q</kbd> cambiar arma · <kbd>R</kbd> recargar · <kbd>P</kbd> pausa
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="card">
+    <div class="title" style="font-size:clamp(54px,10vw,96px)">PAUSA</div>
+    <div style="height:18px"></div>
+    <button class="btn" id="resumeBtn">▶ CONTINUAR</button><br>
+    <button class="btn ghost" id="sndBtn2">🔊 SONIDO</button>
+    <button class="btn ghost" id="quitBtn">SALIR</button>
+  </div>
+</div>
+
+<div id="over" class="screen hidden">
+  <div class="card">
+    <div class="title" style="font-size:clamp(54px,11vw,104px)">HAS <span>CAÍDO</span></div>
+    <div id="newRec" class="newrec hidden">★ NUEVO RÉCORD ★</div>
+    <div class="stats">
+      <div class="stat panel"><b id="oDist">0</b><span>METROS</span></div>
+      <div class="stat panel"><b id="oKills">0</b><span>BAJAS</span></div>
+      <div class="stat panel"><b id="oBoss">0</b><span>JEFES</span></div>
+      <div class="stat panel"><b id="oScore">0</b><span>PUNTOS</span></div>
+    </div>
+    <div class="best" id="bestOver"></div>
+    <button class="btn" id="againBtn">↻ REINTENTAR</button>
+    <button class="btn ghost" id="menuBtn">MENÚ</button>
+  </div>
+</div>
+
+<div id="rotate" class="hidden">
+  <div class="ph"></div>
+  <p>GIRA TU TELÉFONO</p>
+  <small>Zona Muerta se juega en horizontal</small>
+  <button class="btn ghost" id="rotSkip" style="margin-top:10px">JUGAR ASÍ</button>
+</div>
+<script src="js/core.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/world.js"></script>
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/player.js"></script>
+<script src="js/spawn.js"></script>
+<script src="js/bosses.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/update.js"></script>
+<script src="js/actors.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
