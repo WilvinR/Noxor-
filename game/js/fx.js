@@ -35,7 +35,7 @@ function qualityTick(rawDt) {
   }
   FX.acc += rawDt;
   FX.n++;
-  if (FX.n >= 120) {
+  if (FX.acc >= 1.5) {
     const avg = FX.acc / FX.n;
     FX.acc = FX.n = 0;
     if (avg > 1 / 45) {

@@ -1,6 +1,10 @@
 "use strict";
 /* ================== BOSSES ================== */
 function startBoss() {
+  // los consejos de tutorial pendientes no deben aparecer en mitad del combate
+  HQ.length = 0;
+  G.hintT = 0;
+  $("hint").classList.remove("on");
   const idx = G.bossIdx,
     lp = Math.floor(idx / 25),
     d = BOSSES[idx % 25];

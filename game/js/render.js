@@ -629,9 +629,9 @@ function render() {
   haze(140, 400, 0.42);
   drawLayer(LY.cl2, s * 0.05 + G.t * 10, 0);
   drawLayer(LY.mid, s * 0.16, 0);
-  haze(250, 440, 0.24);
+  if (FX.q > 0) haze(250, 440, 0.24);
   drawLayer(LY.near, s * 0.42, 0);
-  haze(330, 452, 0.1);
+  if (FX.q > 0) haze(330, 452, 0.1);
   for (const d of decor) drawDecor(d);
   if (EXT > 0) {
     ctx.fillStyle = "#0b0a0c";
@@ -664,7 +664,7 @@ function render() {
   for (let i = 0; i < lights.length; i += 5)
     blit(lightSpr(lights[i + 3]), lights[i], lights[i + 1], lights[i + 2], lights[i + 4], true);
   // primer plano en parallax rápido: da profundidad sin tapar al jugador
-  drawLayer(LY.fg, s * 1.35, VH + EXT - LY.fg.lh + 6);
+  if (FX.q > 0) drawLayer(LY.fg, s * 1.35, VH + EXT - LY.fg.lh + 6);
   // ash
   for (const a of ash) {
     if (a.ember) {
