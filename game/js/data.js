@@ -105,6 +105,12 @@ const ZT = {
   bloater: { hp: 170, spd: [20, 35], dmg: 20, w: 56, h: 104, an: 3.5, pts: 250, s: 1.3 },
   armored: { hp: 280, spd: [40, 60], dmg: 18, w: 40, h: 98, an: 5, pts: 300, s: 1.15, armor: 0.6 },
 };
+// los zombis se dibujan y colisionan a escala CH (mismo factor que el jugador)
+for (const k in ZT) {
+  ZT[k].w *= CH;
+  ZT[k].h *= CH;
+  ZT[k].s *= CH;
+}
 const SKIN = ["#7d8c6a", "#8a8f78", "#6c7a60", "#9a9480", "#77806e"];
 const CLOTH = ["#3d3a4a", "#4a3a30", "#2f3d3a", "#553333", "#3a3a3a", "#4d4a3a"];
 const BODY = {

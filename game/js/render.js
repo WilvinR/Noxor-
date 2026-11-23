@@ -263,6 +263,11 @@ function drawDecor(d) {
   const x = d.x,
     base = GROUND - 12;
   ctx.save();
+  // el decorado va al 78% de la velocidad del suelo: es un plano intermedio y debe verse
+  // algo más pequeño (antes se dibujaba a escala de primer plano y parecía flotar)
+  ctx.translate(x, base);
+  ctx.scale(0.84, 0.84);
+  ctx.translate(-x, -base);
   switch (d.t) {
     case "lamp":
       ctx.fillStyle = "#0d0c0e";
@@ -296,8 +301,13 @@ function drawDecor(d) {
     case "sign":
       ctx.translate(x, base);
       ctx.rotate(-0.12);
-      ctx.fillStyle = "#0f0d0e";
-      ctx.fillRect(-2, -110, 4, 110);
+      // dos postes visibles con zapata: el cartel queda anclado al suelo
+      ctx.fillStyle = "#2a2528";
+      ctx.fillRect(-30, -112, 5, 112);
+      ctx.fillRect(25, -112, 5, 112);
+      ctx.fillStyle = "#1c181a";
+      ctx.fillRect(-34, -6, 13, 8);
+      ctx.fillRect(21, -6, 13, 8);
       ctx.fillStyle = "#8a7a2a";
       ctx.fillRect(-40, -130, 80, 40);
       ctx.fillStyle = "#1a1610";
@@ -449,13 +459,9 @@ function drawBullet(b) {
   if (b.t === "flame") {
     const t = 1 - b.life / b.max;
     const r = 6 + t * 30;
-    const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
     const a = Math.min(1, b.life * 3);
-    g.addColorStop(0, `rgba(255,${(220 - t * 120) | 0},${(140 - t * 120) | 0},${0.6 * a})`);
-    g.addColorStop(0.6, `rgba(255,${(100 - t * 60) | 0},20,${0.35 * a})`);
-    g.addColorStop(1, "rgba(120,20,0,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(b.x - r, b.y - r, r * 2, r * 2);
+    ctx.globalAlpha = a;
+    ctx.drawImage(flameSpr(t), b.x - r, b.y - r, r * 2, r * 2);
   } else if (b.t === "rocket") {
     ctx.globalCompositeOperation = "source-over";
     ctx.translate(b.x, b.y);
@@ -497,11 +503,7 @@ function drawParts(add) {
     } else if (p.t === "fire") {
       ctx.globalAlpha = t;
       const r = lerp(p.s2, p.s, t);
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-      g.addColorStop(0, p.col);
-      g.addColorStop(1, "rgba(255,60,0,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+      ctx.drawImage(fireSpr(p.col), p.x - r, p.y - r, r * 2, r * 2);
     } else if (p.t === "spark") {
       ctx.globalAlpha = t;
       ctx.strokeStyle = p.col;
@@ -565,7 +567,16 @@ function drawWarn() {
   ctx.restore();
 }
 
+/** Velo de neblina con el color atmosférico de la zona entre y0 e y1. */
+function haze(y0, y1, a) {
+  const g = ctx.createLinearGradient(0, y0 - 120, 0, y1);
+  g.addColorStop(0, `rgba(${ZONE.haze},0)`);
+  g.addColorStop(1, `rgba(${ZONE.haze},${a})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(-10, y0 - 120, VW + 20, y1 - y0 + 122);
+}
 function render() {
+  FX.frame++;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, cv.width, cv.height);
@@ -581,13 +592,27 @@ function render() {
   ctx.lineJoin = "round";
   lights.length = 0;
   const s = G.scroll;
-  // sky
-  ctx.fillStyle = LY.sky;
+  // cielo de la zona actual (fundido entre zonas)
+  const sky = ctx.createLinearGradient(0, 0, 0, VH);
+  for (let i = 0; i < 6; i++) sky.addColorStop(SKY_STOPS[i], ZONE.sky[i]);
+  ctx.fillStyle = sky;
   ctx.fillRect(-10, -10, VW + 20, VH + 20);
-  const mx = VW * 0.76,
-    my = 105;
-  glow(mx, my, 220, "255,190,150", 0.13);
-  circ(mx, my, 34, "#cfbfa6");
+  // resplandor de horizonte
+  {
+    const hs = glowSpr(ZONE.hor);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.18;
+    ctx.drawImage(hs, VW * 0.3 - 520, 410 - 200, 1040, 400);
+    ctx.globalAlpha = 0.13;
+    ctx.drawImage(hs, VW * 0.85 - 420, 420 - 170, 840, 340);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+  }
+  // luna desplazada para no quedar tapada por el panel de arma en pantallas estrechas
+  const mx = VW * 0.64,
+    my = 128;
+  glow(mx, my, 260, ZONE.moon, 0.16);
+  circ(mx, my, 36, `rgb(${ZONE.moon})`);
   circ(mx - 9, my - 6, 6, "rgba(120,100,90,.35)");
   circ(mx + 10, my + 9, 8, "rgba(120,100,90,.3)");
   circ(mx + 4, my - 14, 4, "rgba(120,100,90,.3)");
@@ -600,16 +625,13 @@ function render() {
   ctx.fill();
   drawLayer(LY.cl1, s * 0.02 + G.t * 6, 0);
   drawLayer(LY.far, s * 0.06, 0);
+  // perspectiva atmosférica: cada plano lejano se funde con el color del aire de la zona
+  haze(140, 400, 0.42);
   drawLayer(LY.cl2, s * 0.05 + G.t * 10, 0);
   drawLayer(LY.mid, s * 0.16, 0);
-  // fog band
-  const fg = ctx.createLinearGradient(0, 330, 0, 450);
-  fg.addColorStop(0, "rgba(60,40,36,0)");
-  fg.addColorStop(0.6, "rgba(60,38,32,.35)");
-  fg.addColorStop(1, "rgba(30,20,20,.2)");
-  ctx.fillStyle = fg;
-  ctx.fillRect(0, 330, VW, 130);
+  haze(250, 440, 0.24);
   drawLayer(LY.near, s * 0.42, 0);
+  haze(330, 452, 0.1);
   for (const d of decor) drawDecor(d);
   if (EXT > 0) {
     ctx.fillStyle = "#0b0a0c";
@@ -638,23 +660,11 @@ function render() {
   ctx.globalCompositeOperation = "lighter";
   drawParts(true);
   ctx.globalCompositeOperation = "source-over";
-  // lights
-  ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-  for (let i = 0; i < lights.length; i += 5) {
-    const x = lights[i],
-      y = lights[i + 1],
-      r = lights[i + 2],
-      c = lights[i + 3],
-      a = lights[i + 4];
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, `rgba(${c},${a * 0.55})`);
-    g.addColorStop(0.4, `rgba(${c},${a * 0.18})`);
-    g.addColorStop(1, `rgba(${c},0)`);
-    ctx.fillStyle = g;
-    ctx.fillRect(x - r, y - r, r * 2, r * 2);
-  }
-  ctx.restore();
+  // luces dinámicas (sprites cacheados en lugar de un degradado nuevo por luz y frame)
+  for (let i = 0; i < lights.length; i += 5)
+    blit(lightSpr(lights[i + 3]), lights[i], lights[i + 1], lights[i + 2], lights[i + 4], true);
+  // primer plano en parallax rápido: da profundidad sin tapar al jugador
+  drawLayer(LY.fg, s * 1.35, VH + EXT - LY.fg.lh + 6);
   // ash
   for (const a of ash) {
     if (a.ember) {
@@ -666,8 +676,8 @@ function render() {
   }
   // ground fog
   const gf = ctx.createLinearGradient(0, GROUND - 40, 0, VH);
-  gf.addColorStop(0, "rgba(40,30,30,0)");
-  gf.addColorStop(0.4, "rgba(35,26,24,.25)");
+  gf.addColorStop(0, `rgba(${ZONE.haze},0)`);
+  gf.addColorStop(0.4, `rgba(${ZONE.haze},.12)`);
   gf.addColorStop(1, "rgba(10,8,8,.55)");
   ctx.fillStyle = gf;
   ctx.fillRect(0, GROUND - 40, VW, VH - GROUND + 40);

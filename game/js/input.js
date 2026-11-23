@@ -19,6 +19,9 @@ const KEYMAP = {
   KeyE: "swap",
   KeyR: "reload",
 };
+/** Teclas físicas pulsadas. Una acción sigue activa mientras quede alguna de sus teclas
+ *  (antes, soltar A con ← aún pulsada detenía el movimiento). */
+const HELD = new Set();
 function press(k, v) {
   if (k === "jump" && v && !K.jump) K.jp = 1;
   if (k === "slide" && v && !K.slide) K.sp = 1;
@@ -29,27 +32,68 @@ function press(k, v) {
   }
   K[k] = v ? 1 : 0;
 }
+function keyHeld(k) {
+  for (const c of HELD) if (KEYMAP[c] === k) return true;
+  return false;
+}
+function releaseAll() {
+  HELD.clear();
+  for (const k in K) K[k] = 0;
+}
 addEventListener("keydown", (e) => {
   if (e.code === "KeyP" || e.code === "Escape") {
     togglePause();
     return;
   }
+  // Enter: jugar / reintentar / continuar sin ratón
+  if (e.code === "Enter" && !e.repeat && document.activeElement?.tagName !== "BUTTON") {
+    if (G.state === "menu" || (G.state === "dead" && !$("over").classList.contains("hidden"))) startGame();
+    else if (G.state === "paused") togglePause();
+    return;
+  }
+  // 1-7: selección directa de arma
+  const dg = /^Digit([1-7])$/.exec(e.code);
+  if (dg && G.state === "play") {
+    selectW(WORDER[+dg[1] - 1]);
+    return;
+  }
   const k = KEYMAP[e.code];
   if (k) {
     e.preventDefault();
-    if (!e.repeat) press(k, 1);
+    if (!e.repeat) {
+      HELD.add(e.code);
+      press(k, 1);
+    }
   }
 });
 addEventListener("keyup", (e) => {
   const k = KEYMAP[e.code];
-  if (k) press(k, 0);
+  if (!k) return;
+  HELD.delete(e.code);
+  if (!keyHeld(k)) press(k, 0);
 });
-cv.addEventListener("mousedown", (e) => {
-  if (e.button === 0) K.fire = 1;
+// al perder el foco no deben quedar teclas "pegadas"
+addEventListener("blur", releaseAll);
+// Ratón: sólo el puntero de tipo ratón dispara/para (el original dejaba el disparo
+// bloqueado en portátiles con pantalla táctil porque ignoraba el mouseup).
+cv.addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "mouse" && e.button === 0) K.fire = 1;
 });
-addEventListener("mouseup", () => {
-  if (!isTouch) K.fire = 0;
+addEventListener("pointerup", (e) => {
+  if (e.pointerType === "mouse" && e.button === 0) K.fire = 0;
 });
+// Primer toque en un equipo detectado como no táctil: activa los controles táctiles.
+addEventListener(
+  "touchstart",
+  () => {
+    if (isTouch) return;
+    isTouch = true;
+    if (G.state === "play" || G.state === "paused") $("touch").classList.remove("hidden");
+    setKeysInfo();
+    resize();
+  },
+  { passive: true },
+);
 cv.addEventListener("contextmenu", (e) => e.preventDefault());
 document.querySelectorAll(".tb").forEach((b) => {
   const k = b.dataset.k;

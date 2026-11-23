@@ -153,8 +153,8 @@ function floater(x, y, txt, col, sz) {
   floats.push({ x, y, txt, col: col || "#fff", sz: sz || 18, life: 1 });
 }
 function pbox() {
-  const h = P.slide > 0 ? 44 : 88;
-  return { x: P.x - 14, y: P.y - h, w: 28, h };
+  const h = (P.slide > 0 ? 44 : 88) * CH;
+  return { x: P.x - 14 * CH, y: P.y - h, w: 28 * CH, h };
 }
 function zbox(z) {
   return { x: z.x - z.w / 2, y: GROUND - z.h - z.yo, w: z.w, h: z.h };

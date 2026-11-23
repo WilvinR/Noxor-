@@ -26,7 +26,8 @@ function update(dt) {
     const L = 1 + Math.floor(G.dist / 400);
     if (L > G.lvl) {
       G.lvl = L;
-      if (!G.boss && bannerT <= 0) banner("NIVEL " + L, "LA AMENAZA AUMENTA");
+      setZone(L - 1);
+      if (!G.boss && bannerT <= 0) banner("NIVEL " + L, "ZONA " + (ZONE.i + 1) + " · " + ZONES[ZONE.i].name);
     }
   }
   G.shake = Math.max(0, G.shake - dt * 40);
@@ -641,7 +642,7 @@ function update(dt) {
   hintTick();
   if (G.state === "play") {
     const t = G.t;
-    if (!store.tut) {
+    if (!store.tut && !G.boss) {
       if (t > 3 && t < 3.1) hint(isTouch ? "Mantén FUEGO para disparar" : "Mantén J o clic para disparar", 3);
       if (t > 7 && t < 7.1) hint("Salta los obstáculos · deslízate bajo las vigas", 3.2);
       if (t > 11 && t < 11.1) hint("Recoge cajas de armas y botiquines", 3);

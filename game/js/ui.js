@@ -76,7 +76,8 @@ function startGame() {
   UI.hpw = "";
   Object.keys(UI).forEach((k) => delete UI[k]);
   refreshWeaponUI();
-  banner("CORRE", "SOBREVIVE A LA ZONA");
+  setZone(0, true);
+  banner("CORRE", "ZONA 1 · " + ZONES[0].name);
   last = performance.now();
 }
 function showOver() {
@@ -97,6 +98,7 @@ function showOver() {
     save();
   }
   $("newRec").classList.toggle("hidden", !rec);
+  $("oReach").textContent = "NIVEL " + G.lvl + " · " + ZONES[ZONE.i].name;
   $("bestOver").textContent =
     "MEJOR: " +
     (store.best || 0).toLocaleString("es") +
@@ -109,7 +111,7 @@ function togglePause() {
     G.state = "paused";
     showScreen("pause");
     if (AU.flameG) AU.flameG.gain.setTargetAtTime(0, AU.c.currentTime, 0.03);
-    for (const k in K) K[k] = 0;
+    releaseAll();
   } else if (G.state === "paused") {
     G.state = "play";
     showScreen(null);
@@ -139,6 +141,7 @@ function toMenu() {
   ep = [];
   pick_ = [];
   G.boss = null;
+  setZone(0, true);
   showScreen("menu");
   $("hud").classList.add("hidden");
   $("touch").classList.add("hidden");
@@ -212,12 +215,40 @@ $("sndBtn").onclick = () => {
   setSound(!AU.on);
 };
 $("sndBtn2").onclick = () => setSound(!AU.on);
-if (isTouch)
-  $("keysInfo").innerHTML =
-    "Cruz izquierda: ◀ ▶ moverse · ▲ saltar (toca 2 veces para doble salto) · ▼ deslizarse<br>Derecha: mantén FUEGO para disparar · ARMA para cambiar";
+/** Panel de controles (menú y pausa), adaptado a teclado o a pantalla táctil. */
+function setKeysInfo() {
+  const kb = (...k) => k.map((x) => `<kbd>${x}</kbd>`).join("");
+  const rows = isTouch
+    ? [
+        ["◀ ▶", "moverse"],
+        ["▲", "saltar · 2 toques: doble salto"],
+        ["▼", "deslizarse / caída rápida"],
+        ["FUEGO", "mantén para disparar"],
+        ["ARMA", "cambiar de arma"],
+        ["❚❚", "pausa"],
+      ]
+    : [
+        [kb("A", "D"), "moverse"],
+        [kb("W", "Espacio"), "saltar · doble salto"],
+        [kb("S"), "deslizarse / caída rápida"],
+        [kb("J") + " / clic", "disparar (mantén)"],
+        [kb("Q") + " " + kb("1-7"), "cambiar / elegir arma"],
+        [kb("R"), "recargar"],
+        [kb("P") + " " + kb("Esc"), "pausa"],
+        [kb("Enter"), "jugar / continuar"],
+      ];
+  const html = rows.map(([k, t]) => `<div class="k"><span>${k}</span><span>${t}</span></div>`).join("");
+  $("keysInfo").innerHTML = html;
+  $("keysPause").innerHTML = html;
+}
+setKeysInfo();
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && G.state === "play") togglePause();
 });
+// redimensionado con espera: en móvil la barra del navegador dispara decenas de eventos
+// y cada uno reconstruía todas las capas del escenario
+let rsT = 0;
 addEventListener("resize", () => {
-  resize();
+  clearTimeout(rsT);
+  rsT = setTimeout(resize, 120);
 });

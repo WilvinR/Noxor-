@@ -58,12 +58,13 @@ function buildLayers() {
   });
   LY.near = nearLayer(1700, mulberry(13));
   LY.ground = groundLayer(1024, mulberry(21));
+  LY.fg = fgLayer(1400, mulberry(37));
   // vignette
   const V = mkLayer(VW, VH);
   const g = V.x.createRadialGradient(VW / 2, VH * 0.45, VH * 0.25, VW / 2, VH * 0.5, VW * 0.75);
   g.addColorStop(0, "rgba(0,0,0,0)");
   g.addColorStop(0.6, "rgba(0,0,0,.25)");
-  g.addColorStop(1, "rgba(0,0,0,.85)");
+  g.addColorStop(1, "rgba(0,0,0,.62)");
   V.x.fillStyle = g;
   V.x.fillRect(0, 0, VW, VH);
   LY.vig = V;
@@ -413,7 +414,7 @@ function resize() {
   OX = (cw - VW * SC) / 2;
   OY = band ? Math.max(0, (ah - VH * SC) / 2) : (ch - VH * SC) / 2;
   EXT = band ? (ch - OY - VH * SC) / SC : 0;
-  RES = Math.min(SC * DPR, 2.4);
+  RES = Math.min(SC * DPR, 2);
   if (isTouch) {
     PMIN = clamp(210 / SC, 240, 460);
     PSTART = PMIN + 40;
@@ -431,3 +432,109 @@ $("rotSkip").onclick = () => {
   rotSkipped = true;
   checkRotate();
 };
+
+/* ================== ZONAS (variedad visual por nivel) ==================
+ * El original usaba una única paleta naranja/negra durante toda la partida. Cada nivel
+ * (400 m) cambia ahora de zona con un fundido de 3 s: cielo, neblina atmosférica entre
+ * capas de parallax, luz de horizonte y la luz de borde de los personajes.
+ */
+const ZONES = [
+  {
+    name: "CIUDAD EN LLAMAS",
+    sky: ["#07070d", "#140f15", "#2c1813", "#5a2610", "#2b140d", "#0a0707"],
+    haze: [120, 62, 40],
+    hor: [255, 120, 50],
+    rim: [255, 172, 112],
+    key: [255, 186, 128],
+    moon: [222, 206, 182],
+  },
+  {
+    name: "DISTRITO TÓXICO",
+    sky: ["#040908", "#0b1613", "#16271a", "#3c5018", "#16200e", "#060805"],
+    haze: [64, 96, 46],
+    hor: [170, 230, 60],
+    rim: [196, 255, 128],
+    key: [205, 255, 160],
+    moon: [214, 228, 176],
+  },
+  {
+    name: "PUERTO NOCTURNO",
+    sky: ["#03050c", "#0a1222", "#142542", "#2a4672", "#121c30", "#05070c"],
+    haze: [58, 80, 122],
+    hor: [110, 160, 255],
+    rim: [158, 204, 255],
+    key: [176, 214, 255],
+    moon: [226, 236, 255],
+  },
+  {
+    name: "ZONA ROJA",
+    sky: ["#090304", "#1b070a", "#38090d", "#7a1512", "#2a0808", "#090303"],
+    haze: [124, 32, 30],
+    hor: [255, 70, 50],
+    rim: [255, 120, 96],
+    key: [255, 150, 128],
+    moon: [240, 190, 176],
+  },
+];
+const ZONE = { i: 0, from: 0, t: 1, rim: "", key: "", haze: "", hor: "", moon: "" };
+const hexRgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+for (const z of ZONES) z.skyRgb = z.sky.map(hexRgb);
+const mixRgb = (a, b, t) => a.map((v, i) => Math.round(lerp(v, b[i], t)));
+function setZone(i, instant) {
+  i = ((i % ZONES.length) + ZONES.length) % ZONES.length;
+  if (i === ZONE.i && ZONE.t >= 1) return;
+  ZONE.from = instant ? i : ZONE.i;
+  ZONE.i = i;
+  ZONE.t = instant ? 1 : 0;
+  zoneTick(0);
+}
+function zoneTick(dt) {
+  ZONE.t = Math.min(1, ZONE.t + dt / 3);
+  const a = ZONES[ZONE.from],
+    b = ZONES[ZONE.i],
+    t = ZONE.t * ZONE.t * (3 - 2 * ZONE.t);
+  const m = (k) => mixRgb(a[k], b[k], t).join(",");
+  ZONE.rim = `rgba(${m("rim")},.85)`;
+  ZONE.key = m("key");
+  ZONE.haze = m("haze");
+  ZONE.hor = m("hor");
+  ZONE.moon = m("moon");
+  ZONE.sky = a.skyRgb.map((c, k) => `rgb(${mixRgb(c, b.skyRgb[k], t).join(",")})`);
+}
+zoneTick(0);
+const SKY_STOPS = [0, 0.35, 0.62, 0.78, 0.86, 1];
+
+/** Capa de primer plano: escombros y varillas que pasan por delante (profundidad). */
+function fgLayer(lw, r) {
+  const H = 70,
+    L = mkLayer(lw, H),
+    x = L.x;
+  x.fillStyle = "#040304";
+  let px = 0;
+  while (px < lw) {
+    const gap = 140 + r() * 260;
+    px += gap;
+    if (px > lw - 120) break;
+    const w = 60 + r() * 120,
+      h = 18 + r() * 26;
+    // montículo de escombros
+    x.beginPath();
+    x.moveTo(px, H);
+    for (let k = 0; k <= 6; k++) x.lineTo(px + (w * k) / 6, H - h * (0.4 + r() * 0.6) * Math.sin((k / 6) * PI));
+    x.lineTo(px + w, H);
+    x.closePath();
+    x.fill();
+    // varillas de acero retorcidas
+    x.strokeStyle = "#040304";
+    x.lineWidth = 2.2;
+    for (let k = 0; k < 2 + r() * 3; k++) {
+      const bx = px + w * (0.2 + r() * 0.6);
+      x.beginPath();
+      x.moveTo(bx, H - h * 0.5);
+      x.quadraticCurveTo(bx + (r() - 0.5) * 30, H - h - 10 - r() * 10, bx + (r() - 0.5) * 40, H - h - 18 - r() * 16);
+      x.stroke();
+    }
+    px += w;
+  }
+  return L;
+}

@@ -569,7 +569,7 @@ function bossDead(b) {
   G.nextBoss = G.dist + 600 + Math.min(400, G.bossIdx * 16);
   if (G.bossIdx % 25 === 0)
     setTimeout(
-      () => banner("¡25 JEFES DERROTADOS!", "EMPIEZA LA RONDA " + ROMAN[Math.min(G.loop + 1, 9)]),
+      () => G.state === "play" && banner("¡25 JEFES DERROTADOS!", "EMPIEZA LA RONDA " + ROMAN[Math.min(G.loop + 1, 9)]),
       2500,
     );
   const cand = WORDER.filter((k) => k !== "pistol");

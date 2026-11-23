@@ -1,7 +1,10 @@
 "use strict";
 /* ================== BASE ================== */
-const cv = document.getElementById("c"),
-  ctx = cv.getContext("2d");
+const cv = document.getElementById("c");
+/** Contexto 2D principal. `ctx` es reasignable: el compositor de personajes (fx.js)
+ *  lo redirige temporalmente a un lienzo auxiliar mientras dibuja cada actor. */
+const MAIN = cv.getContext("2d");
+let ctx = MAIN;
 const VH = 540,
   GROUND = 452;
 let VW = 960,
@@ -31,7 +34,13 @@ const $ = (id) => document.getElementById(id);
 const PMIN0 = 70;
 let PMIN = 70,
   PSTART = 200;
-const isTouch = "ontouchstart" in window || matchMedia("(pointer:coarse)").matches;
+/** Modo táctil: sólo si el puntero principal es "grueso" (móvil/tablet). Un portátil con
+ *  pantalla táctil usa ratón+teclado; si el jugador toca la pantalla se activa al vuelo. */
+let isTouch =
+  matchMedia("(pointer:coarse)").matches ||
+  (navigator.maxTouchPoints > 0 && !matchMedia("(pointer:fine)").matches);
+/** Escala visual y de colisión de los personajes (jugador y zombis) respecto al original. */
+const CH = 1.14;
 let store = {};
 try {
   store = JSON.parse(localStorage.getItem("zm_save") || "{}");

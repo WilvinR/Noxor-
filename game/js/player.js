@@ -77,6 +77,17 @@ function switchW(dir = 1, silent) {
     }
   }
 }
+/** Selección directa (teclas 1-7) si el arma está en posesión y tiene munición. */
+function selectW(id) {
+  const a = P.arms[id];
+  if (!a || !a.own || a.mag + a.res <= 0 || id === P.cur) return;
+  P.cur = id;
+  P.rl = 0;
+  P.cd = 0.2;
+  if (AU.mech) playBuf(AU.mech.swap, { g: 0.8 });
+  toast(WEAP[id].n);
+  refreshWeaponUI();
+}
 function giveWeapon(id) {
   const a = P.arms[id],
     w = WEAP[id];
@@ -127,8 +138,9 @@ function gunPos() {
   const f = P.face || 1;
   let sx = sl ? -8 : 6,
     sy = sl ? -44 : hip - 29;
-  if (P.cur === "rocket") return { x: P.x + f * (sx + 2 - P.recoil * 5), y: P.y + sy - 2 };
-  return { x: P.x + f * (sx + 14 - P.recoil * 5), y: P.y + sy + 9 };
+  // el cuerpo se dibuja escalado por CH: el cañón debe coincidir con el arma visible
+  if (P.cur === "rocket") return { x: P.x + f * CH * (sx + 2 - P.recoil * 5), y: P.y + CH * (sy - 2) };
+  return { x: P.x + f * CH * (sx + 14 - P.recoil * 5), y: P.y + CH * (sy + 9) };
 }
 function shoot() {
   const w = curW(),
@@ -300,7 +312,11 @@ function updatePlayer(dt) {
   p.idle = ar && mv === 0;
   p.coy -= dt;
   if (p.ground) p.coy = 0.09;
-  if (K.jp && !(p.ground || p.coy > 0) && p.jumps < 2) {
+  // búfer de salto: una pulsación justo antes de aterrizar no se pierde (130 ms)
+  if (K.jp) p.jb = 0.13;
+  else p.jb = (p.jb || 0) - dt;
+  if (p.jb > 0 && !(p.ground || p.coy > 0) && p.jumps < 2) {
+    p.jb = 0;
     p.vy = -700;
     p.jumps = 2;
     p.flip = 0;
@@ -318,7 +334,8 @@ function updatePlayer(dt) {
         t: "smoke",
       });
   }
-  if (K.jp && (p.ground || p.coy > 0)) {
+  if (p.jb > 0 && (p.ground || p.coy > 0)) {
+    p.jb = 0;
     p.vy = -880;
     p.jumps = 1;
     p.ground = false;
@@ -349,7 +366,7 @@ function updatePlayer(dt) {
   }
   if (p.slide > 0) {
     p.slide -= dt;
-    if (K.slide && p.slide < 0.1 && p.slideHold < 0.6) {
+    if (K.slide && p.slide < 0.1 && (p.slideHold || 0) < 0.6) {
       p.slide = 0.1;
       p.slideHold = (p.slideHold || 0) + dt;
     }
@@ -372,6 +389,7 @@ function updatePlayer(dt) {
   if (p.y >= GROUND) {
     if (!p.ground) {
       sfxLand();
+      p.land = 0.14;
       for (let i = 0; i < 5; i++)
         part({
           x: p.x,
@@ -402,6 +420,7 @@ function updatePlayer(dt) {
     if (Math.floor(prev / PI) !== Math.floor(p.phase / PI)) sfxStep();
   }
   p.inv -= dt;
+  if (p.land > 0) p.land -= dt;
   p.recoil = Math.max(0, p.recoil - dt * 9);
   // aim
   const gp = gunPos();
